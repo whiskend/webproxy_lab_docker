@@ -31,8 +31,8 @@ int main(int argc, char **argv)
      * - 11.4.9: 에코 서버 main 함수의 변수 구성
      */
     int listenfd, connfd;
-    socklen_t clientlen;
-    struct sockaddr_storage clientaddr;
+    socklen_t clientlen; //os마다 int 타입이 다를 수 있어서 표준 타입 socklen_t 사용
+    struct sockaddr_storage clientaddr; //IPV6던 IPV4던 모든 종류의 주소를 담을 수 있는 큰 그릇
     char hostname[MAXLINE], port[MAXLINE];
 
     /*
@@ -54,8 +54,6 @@ int main(int argc, char **argv)
 
     /*
      * 3. listening socket 열기
-     *
-     * listenfd = Open_listenfd(argv[1]);
      *
      * 여기까지 성공하면 서버는 해당 포트에서
      * 클라이언트 연결을 기다릴 준비가 된 상태
@@ -175,6 +173,9 @@ void echo(int connfd)
      * - 10.5.2: RIO의 버퍼링된 입력 함수
      * - 11.4.9: echo 함수의 지역 변수 구성
      */
+    size_t n;
+    char buf[MAXLINE];
+    rio_t rio;
 
     /*
      * 2. connfd와 rio 연결
@@ -187,6 +188,7 @@ void echo(int connfd)
      * - 10.5.2: Rio_readinitb로 RIO 버퍼와 디스크립터 연결
      * - 11.4.9: connected descriptor(connfd)를 RIO에 연결
      */
+    Rio_readinitb(&rio, connfd);
 
     /*
      * 3. 클라이언트가 보낸 내용을 한 줄씩 읽기
@@ -201,6 +203,7 @@ void echo(int connfd)
      * - 10.5.2: Rio_readlineb로 한 줄씩 읽기
      * - 11.4.9: 클라이언트가 닫을 때까지 반복해서 읽는 echo 함수
      */
+    while ((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0) {
 
         /*
          * 4. 서버 로그 출력
@@ -213,11 +216,10 @@ void echo(int connfd)
          * 참고 절:
          * - 11.4.9: 서버가 받은 바이트 수를 출력하는 예제 흐름
          */
+        printf("server received %d bytes\n", (int)n);
 
         /*
          * 5. 읽은 내용을 그대로 클라이언트에게 다시 보내기
-         *
-         * Rio_writen(connfd, buf, n);
          *
          * 핵심:
          * 받은 그대로 돌려주기 때문에 echo server
@@ -226,6 +228,8 @@ void echo(int connfd)
          * - 10.5.1: Rio_writen으로 n바이트를 끝까지 쓰기
          * - 11.4.9: 에코 서버가 받은 데이터를 그대로 돌려주는 핵심 동작
          */
+        Rio_writen(connfd, buf, n);
+    }
 
     /*
      * }
